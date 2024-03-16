@@ -8,7 +8,7 @@ new_jdate <- function(x = double()) {
 #' `jdate` is an S3 class for representing the Jalali calendar dates. It can be constructed
 #' from character and numeric vectors.
 #'
-#' @details `jdate` is stored internaly as a double vector and doesn’t have any attributes.
+#' @details `jdate` is stored internaly as a double vector and doesn't have any attributes.
 #'    Its value represents the count of days since the Unix epoch (a negative value
 #'    if it represents a date prior to the epoch). This implementation coincides
 #'    with the implementation of `Date` class.
@@ -42,6 +42,7 @@ jdate.NULL <- function(x, ...) {
 jdate.numeric <- function(x, ...) {
     check_dots_empty()
     x <- vec_cast(x, double())
+    x <- trunc(x)
     new_jdate(x)
 }
 
@@ -50,8 +51,9 @@ jdate.numeric <- function(x, ...) {
 jdate.character <- function(x, format = NULL, ...) {
     check_dots_empty()
     format <- format %||% "%Y-%m-%d"
-    days_since_epoch <- jdate_parse_cpp(x, format)
-    new_jdate(days_since_epoch)
+    out <- jdate_parse_cpp(x, format)
+    names(out) <- names(x)
+    new_jdate(out)
 }
 
 #' Check an object for its class
@@ -71,13 +73,20 @@ is_jdate <- function(x) {
 #' @export
 format.jdate <- function(x, format = NULL, ...) {
     format <- format %||% "%Y-%m-%d"
-    format_jdate_cpp(x, format)
+    out <- format_jdate_cpp(x, format)
+    names(out) <- names(x)
+    out
 }
 
 #' @export
 obj_print_data.jdate <- function(x, ...) {
     if (length(x) == 0) return()
     print(format(x))
+}
+
+#' @export
+is.numeric.jdate <- function(x) {
+    FALSE
 }
 
 #' @rdname jdatetime_now
@@ -196,6 +205,7 @@ vec_cast.jdate.jdatetime <- function(x, to, ...) {
     }
 
     ld <- local_days_from_sys_seconds_cpp(vec_data(x), tz)
+    names(ld) <- names(x)
     new_jdate(ld)
 }
 

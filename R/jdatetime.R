@@ -54,6 +54,7 @@ jdatetime.NULL <- function(x, tzone = "", ...) {
 jdatetime.numeric <- function(x, tzone = "", ...) {
     check_dots_empty()
     x <- vec_cast(x, double())
+    x <- trunc(x)
     new_jdatetime(x, tzone)
 }
 
@@ -76,9 +77,10 @@ jdatetime.character <- function(x, tzone = "", format = NULL, ...) {
     }
 
     format <- format %||% "%Y-%m-%d %H:%M:%S"
-    seconds_since_epoch <- jdatetime_parse_cpp(x, format, tzone)
+    out <- jdatetime_parse_cpp(x, format, tzone)
+    names(out) <- names(x)
     if (local_tz) tzone <- ""
-    new_jdatetime(seconds_since_epoch, tzone)
+    new_jdatetime(out, tzone)
 }
 
 #' @rdname is_jdate
@@ -90,7 +92,14 @@ is_jdatetime <- function(x) {
 #' @export
 format.jdatetime <- function(x, format = NULL, ...) {
     format <- format %||% "%Y-%m-%d %H:%M:%S"
-    format_jdatetime_cpp(x, format)
+    out <- format_jdatetime_cpp(x, format)
+    names(out) <- names(x)
+    out
+}
+
+#' @export
+is.numeric.jdatetime <- function(x) {
+    FALSE
 }
 
 #' @export
@@ -179,9 +188,9 @@ jdatetime_make <- function(year, month = 1L, day = 1L,
     fields <- vec_recycle_common(!!!fields)
     fields <- df_list_propagate_missing(fields)
 
-    seconds_since_epoch <- jdatetime_make_cpp(fields, tzone)
+    out <- jdatetime_make_cpp(fields, tzone)
     if (local_tz) tzone = ""
-    new_jdatetime(seconds_since_epoch, tzone)
+    new_jdatetime(out, tzone)
 }
 
 # Print ------------------------------------------------------------------
@@ -258,6 +267,7 @@ vec_cast.jdatetime.jdate <- function(x, to, ...) {
     }
 
     ss <- sys_seconds_from_local_days_cpp(vec_data(x), tz)
+    names(ss) <- names(x)
 
     if (local_tz) {
         tz <- ""
