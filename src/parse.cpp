@@ -1,6 +1,11 @@
 #include "shide.h"
 #include "jalali.h"
 
+enum class choose;
+choose string_to_choose(const std::string& choose_str);
+double jdatetime_from_local_seconds(const date::local_seconds& ls, const date::time_zone* tz,
+                                    date::local_info& info, const choose& c);
+
 [[cpp11::register]]
 cpp11::writable::doubles
 jdate_parse_cpp(const cpp11::strings& x, const cpp11::strings& format)
@@ -8,8 +13,6 @@ jdate_parse_cpp(const cpp11::strings& x, const cpp11::strings& format)
     if (format.size() != 1) {
         cpp11::stop("`format` must have size 1.");
     }
-
-    int year, month, day, days_since_epoch;
 
     const R_xlen_t size = x.size();
     cpp11::writable::doubles out(size);
@@ -20,6 +23,8 @@ jdate_parse_cpp(const cpp11::strings& x, const cpp11::strings& format)
     std::istringstream is;
     std::chrono::minutes* offptr{};
     std::string* abbrev{};
+    sh_year_month_day ymd{};
+    date::days days_since_epoch;
 
     for (R_xlen_t i = 0; i < size; ++i)
     {
@@ -45,18 +50,16 @@ jdate_parse_cpp(const cpp11::strings& x, const cpp11::strings& format)
             continue;
         }
 
-        year = static_cast<int>(fds.ymd.year());
-        month = static_cast<int>(static_cast<unsigned>(fds.ymd.month()));
-        day = static_cast<int>(static_cast<unsigned>(fds.ymd.day()));
+        ymd = {fds.ymd.year(), fds.ymd.month(), fds.ymd.day()};
 
-        if (!year_month_day_ok(year, month, day))
+        if (!ymd.ok())
         {
             out[i] = NA_REAL;
             continue;
         }
 
-        days_since_epoch = ymd_to_day(year, month, day) - jd_unix_epoch;
-        out[i] = static_cast<double>(days_since_epoch);
+        days_since_epoch = local_days(ymd).time_since_epoch();
+        out[i] = static_cast<double>(days_since_epoch.count());
     }
 
     return out;
@@ -64,15 +67,15 @@ jdate_parse_cpp(const cpp11::strings& x, const cpp11::strings& format)
 
 [[cpp11::register]]
 cpp11::writable::doubles
-jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format, const cpp11::strings& tzone)
+jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format,
+                    const cpp11::strings& tzone, const std::string& ambiguous)
 {
     if (format.size() != 1) {
         cpp11::stop("`format` must have size 1.");
     }
 
-    int year, month, day, days_since_epoch;
+    const auto Ambiguous{ string_to_choose(ambiguous) };
     date::local_seconds ls;
-    std::chrono::seconds seconds_since_epoch;
     const date::time_zone* tz{};
     date::local_info info;
     const std::string tz_name(tzone[0]);
@@ -91,6 +94,7 @@ jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format, const
     std::istringstream is;
     std::chrono::minutes* offptr{};
     std::string* abbrev{};
+    sh_year_month_day ymd{};
 
     for (R_xlen_t i = 0; i < size; ++i)
     {
@@ -123,33 +127,16 @@ jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format, const
             continue;
         }
 
-        year = static_cast<int>(fds.ymd.year());
-        month = static_cast<int>(static_cast<unsigned>(fds.ymd.month()));
-        day = static_cast<int>(static_cast<unsigned>(fds.ymd.day()));
+        ymd = {fds.ymd.year(), fds.ymd.month(), fds.ymd.day()};
 
-        if (!year_month_day_ok(year, month, day))
+        if (!ymd.ok())
         {
             out[i] = NA_REAL;
             continue;
         }
 
-        days_since_epoch = ymd_to_day(year, month, day) - jd_unix_epoch;
-        ls = date::local_seconds{ date::days{ days_since_epoch } + fds.tod.to_duration() };
-        tzdb::get_local_info(ls, tz, info);
-        switch (info.result)
-        {
-        case date::local_info::unique:
-            break;
-        case date::local_info::nonexistent:
-            out[i] = NA_REAL;
-            continue;
-        case date::local_info::ambiguous:
-            out[i] = NA_REAL;
-            continue;
-        }
-
-        seconds_since_epoch = ls.time_since_epoch() - info.first.offset;
-        out[i] = static_cast<double>(seconds_since_epoch.count());
+        ls = local_days(ymd) + fds.tod.to_duration();
+        out[i] = jdatetime_from_local_seconds(ls, tz, info, Ambiguous);
     }
 
     return out;

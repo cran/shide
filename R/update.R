@@ -1,4 +1,5 @@
-jdate_update <- function(x, fields) {
+jdate_update <- function(x, fields, ...) {
+    check_dots_empty()
     size <- vec_size_common(x = x, !!!fields)
     x <- vec_recycle(x, size)
     fields <- vec_cast_common(!!!fields, .to = integer())
@@ -11,7 +12,12 @@ jdate_update <- function(x, fields) {
     jdate(out)
 }
 
-jdatetime_update <- function(x, fields) {
+jdatetime_update <- function(x, fields, ..., ambiguous = NULL) {
+    check_dots_empty()
+    if (!is.null(ambiguous)) {
+        ambiguous <- validate_ambiguous(ambiguous)
+    }
+
     size <- vec_size_common(x = x, !!!fields)
     x <- vec_recycle(x, size)
 
@@ -26,7 +32,13 @@ jdatetime_update <- function(x, fields) {
     fields <- df_list_propagate_missing(fields)
     fields_x <- jdatetime_get_fields_cpp(x)
     fields_out <- vec_assign(fields_x, names(fields), fields)
-    out <- jdatetime_make_cpp(fields_out, tz)
+
+    if (is.null(ambiguous)) {
+        out <- jdatetime_make_with_reference_cpp(fields_out, tz, x)
+    } else {
+        out <- jdatetime_make_cpp(fields_out, tz, ambiguous = ambiguous)
+    }
+
     if (local_tz) tz = ""
     names(out) <- names(x)
     jdatetime(out, tz)

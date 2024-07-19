@@ -1,3 +1,18 @@
+# shide 0.2.1
+
+* Default formatting for `jdatetime` objects is changed to conform to default R behavior.
+
+* `jdate` and `jdatetime` vectors are printed more nicely in tibbles.
+
+* Rounding family of functions (`sh_floor()`, `sh_ceiling()` and `sh_round()`) now accept
+  multi-unit values for `unit` argument.
+  
+* `jdatetime()` and `jdatetime_make()` now support ambiguous time resolution strategies
+  via `ambiguous` argument (ambiguous times occur during a repeated interval when the clock 
+  is adjusted backwards during the transition from DST to standard time).
+  
+* Fixed a bug regarding casting of `jdatetime` to `jdate` (#4).
+
 # shide 0.2.0
 
 * New `sh_year_is_leap()` determines if a Jalali year is a leap year.

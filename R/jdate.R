@@ -123,6 +123,10 @@ vec_ptype_abbr.jdate <- function(x, ...) {
     "jdate"
 }
 
+pillar_shaft.jdate <- function(x, ...) {
+    pillar::new_pillar_shaft_simple(format(x, "%Y-%m-%d"), width = 10L, align = "left")
+}
+
 # Coerce ------------------------------------------------------------------
 
 #' Coercion
@@ -199,7 +203,7 @@ vec_cast.jdate.POSIXct <- function(x, to, ...) {
 #' @method vec_cast.jdate jdatetime
 #' @export
 vec_cast.jdate.jdatetime <- function(x, to, ...) {
-    tz <- tzone(to)
+    tz <- tzone(x)
     if (identical(tz, "")) {
         tz <- get_current_tzone()
     }

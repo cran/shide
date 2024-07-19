@@ -5,7 +5,7 @@ new_jdatetime <- function(x = double(), tzone = "") {
         tzone = ""
     }
 
-    if (!is.character(tzone) && length(tzone) != 1L && is.na(tzone)) {
+    if (!rlang::is_scalar_character(tzone) || is.na(tzone)) {
         stop("`tzone` must be a character vector of length 1 or `NULL`.")
     }
 
@@ -17,7 +17,7 @@ new_jdatetime <- function(x = double(), tzone = "") {
 #' `jdatetime` is an S3 class for representing date-times with the Jalali calendar dates.
 #'  It can be constructed from character and numeric vectors.
 #'
-#' @details `jdatetime` is stored internaly as a double vector and has a single
+#' @details `jdatetime` is stored internally as a double vector and has a single
 #'    attribute: the timezone (tzone). Its value represents the count of seconds
 #'    since the Unix epoch (a negative value if it represents an instant prior to the epoch).
 #'    This implementation coincides with that of `POSIXct` class, except that `POSIXct`
@@ -36,7 +36,9 @@ new_jdatetime <- function(x = double(), tzone = "") {
 #' ## nonexistent time will be replaced with NA
 #' jdatetime("1401-01-02 00:30:00", tzone = "Asia/Tehran")
 #' ## ambiguous time will be replaced with NA
-#' jdatetime("1401-06-30 23:30:00", tzone = "Asia/Tehran")
+#' jdatetime("1401-06-30 23:30:00", tzone = "Asia/Tehran", ambiguous = "NA")
+#' ## ambiguous time will resolve by choosing the later time instant
+#' jdatetime("1401-06-30 23:30:00", tzone = "Asia/Tehran", ambiguous = "latest")
 #' ## Jalali date-time in Iran time zone, corresponding to Unix epoch
 #' jdatetime(0, "Iran")
 #' @export
@@ -60,9 +62,21 @@ jdatetime.numeric <- function(x, tzone = "", ...) {
 
 #' @rdname jdatetime
 #' @param format Format argument for character method.
+#' @param ambiguous
+#'    Resolve ambiguous times that occur during a repeated interval
+#'    (when the clock is adjusted backwards during the transition from DST to standard time).
+#'    Possible values are:
+#'    * `"earliest"`: Choose the earliest of the two moments.
+#'    * `"latest"`: Choose the latest of the two moments.
+#'    * `"NA"`: Produce `NA`.
+#'
+#'    If `NULL`, defaults to `"earliest"`; as this seems to be base R's behavior.
 #' @export
-jdatetime.character <- function(x, tzone = "", format = NULL, ...) {
+jdatetime.character <- function(x, tzone = "", format = NULL, ..., ambiguous = NULL) {
     check_dots_empty()
+
+    ambiguous <- ambiguous <- validate_ambiguous(ambiguous)
+
     if (is.null(tzone)) {
         tzone <- ""
     }
@@ -77,7 +91,7 @@ jdatetime.character <- function(x, tzone = "", format = NULL, ...) {
     }
 
     format <- format %||% "%Y-%m-%d %H:%M:%S"
-    out <- jdatetime_parse_cpp(x, format, tzone)
+    out <- jdatetime_parse_cpp(x, format, tzone, ambiguous)
     names(out) <- names(x)
     if (local_tz) tzone <- ""
     new_jdatetime(out, tzone)
@@ -91,7 +105,7 @@ is_jdatetime <- function(x) {
 
 #' @export
 format.jdatetime <- function(x, format = NULL, ...) {
-    format <- format %||% "%Y-%m-%d %H:%M:%S"
+    format <- format %||% "%Y-%m-%d %T %z"
     out <- format_jdatetime_cpp(x, format)
     names(out) <- names(x)
     out
@@ -150,6 +164,15 @@ jdatetime_now <- function(tzone = "") {
 #' @param second Numeric second.
 #' @param tzone A time zone name. Default value represents local time zone.
 #' @inheritParams rlang::args_dots_empty
+#' @param ambiguous
+#'    Resolve ambiguous times that occur during a repeated interval
+#'    (when the clock is adjusted backwards during the transition from DST to standard time).
+#'    Possible values are:
+#'    * `"earliest"`: Choose the earliest of the two moments.
+#'    * `"latest"`: Choose the latest of the two moments.
+#'    * `"NA"`: Produce `NA`.
+#'
+#'    If `NULL`, defaults to `"earliest"`; as this seems to be base R's behavior.
 #' @return
 #' * `jdate_make()` A vector of jdate object.
 #' * `jdatetime_make()` A vector of jdatetime object.
@@ -158,14 +181,19 @@ jdatetime_now <- function(tzone = "") {
 #' jdate_make(year = 1401)
 #' ## Components are recycled
 #' jdatetime_make(year = 1399:1400, month = 12, day = c(30, 29), hour = 12, tzone = "UTC")
+#' ## resolve ambiguous time by choosing the later time instant
+#' jdatetime_make(1401, 6, 30, 23, 0, 0, tzone = "Asia/Tehran", ambiguous = "latest")
 #' @export
 jdatetime_make <- function(year, month = 1L, day = 1L,
-                           hour = 0L, minute = 0L, second = 0L, tzone = "", ...) {
+                           hour = 0L, minute = 0L, second = 0L, tzone = "", ...,
+                           ambiguous = NULL) {
     check_dots_empty()
 
     if (rlang::is_missing(year)) {
         stop("argument \"year\" is missing, with no default")
     }
+
+    ambiguous <- validate_ambiguous(ambiguous)
 
     if (is.null(tzone)) {
         tzone <- ""
@@ -188,7 +216,7 @@ jdatetime_make <- function(year, month = 1L, day = 1L,
     fields <- vec_recycle_common(!!!fields)
     fields <- df_list_propagate_missing(fields)
 
-    out <- jdatetime_make_cpp(fields, tzone)
+    out <- jdatetime_make_cpp(fields, tzone, ambiguous)
     if (local_tz) tzone = ""
     new_jdatetime(out, tzone)
 }
@@ -204,6 +232,14 @@ vec_ptype_full.jdatetime <- function(x, ...) {
 #' @export
 vec_ptype_abbr.jdatetime <- function(x, ...) {
     "jdttm"
+}
+
+pillar_shaft.jdatetime <- function(x, ...) {
+    d <- format(x, format = "%Y-%m-%d")
+    t <- format(x, format = "%T")
+    dt <- paste0(d, " ", pillar::style_subtle(t))
+    dt[is.na(x)] <- NA
+    pillar::new_pillar_shaft_simple(dt, width = 19L, align = "left")
 }
 
 # Coerce ------------------------------------------------------------------

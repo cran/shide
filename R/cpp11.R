@@ -36,24 +36,32 @@ jdate_make_cpp <- function(fields) {
   .Call(`_shide_jdate_make_cpp`, fields)
 }
 
-jdatetime_make_cpp <- function(fields, tzone) {
-  .Call(`_shide_jdatetime_make_cpp`, fields, tzone)
+jdatetime_make_cpp <- function(fields, tzone, ambiguous) {
+  .Call(`_shide_jdatetime_make_cpp`, fields, tzone, ambiguous)
+}
+
+jdatetime_make_with_reference_cpp <- function(fields, tzone, x) {
+  .Call(`_shide_jdatetime_make_with_reference_cpp`, fields, tzone, x)
 }
 
 jdate_parse_cpp <- function(x, format) {
   .Call(`_shide_jdate_parse_cpp`, x, format)
 }
 
-jdatetime_parse_cpp <- function(x, format, tzone) {
-  .Call(`_shide_jdatetime_parse_cpp`, x, format, tzone)
+jdatetime_parse_cpp <- function(x, format, tzone, ambiguous) {
+  .Call(`_shide_jdatetime_parse_cpp`, x, format, tzone, ambiguous)
 }
 
-jdate_ceiling_cpp <- function(x, unit_name) {
-  .Call(`_shide_jdate_ceiling_cpp`, x, unit_name)
+jdate_ceiling_cpp <- function(x, unit_name, n) {
+  .Call(`_shide_jdate_ceiling_cpp`, x, unit_name, n)
 }
 
-jdate_floor_cpp <- function(x, unit_name) {
-  .Call(`_shide_jdate_floor_cpp`, x, unit_name)
+jdate_floor_cpp <- function(x, unit_name, n) {
+  .Call(`_shide_jdate_floor_cpp`, x, unit_name, n)
+}
+
+parse_unit_cpp <- function(unit) {
+  .Call(`_shide_parse_unit_cpp`, unit)
 }
 
 jdate_seq_by_month_cpp <- function(x, dm) {
@@ -72,6 +80,10 @@ local_days_from_sys_seconds_cpp <- function(x, tzone) {
   .Call(`_shide_local_days_from_sys_seconds_cpp`, x, tzone)
 }
 
-get_zone_info <- function(x, tzone) {
-  .Call(`_shide_get_zone_info`, x, tzone)
+get_local_info_cpp <- function(x, tzone) {
+  .Call(`_shide_get_local_info_cpp`, x, tzone)
+}
+
+get_sys_info_cpp <- function(x) {
+  .Call(`_shide_get_sys_info_cpp`, x)
 }

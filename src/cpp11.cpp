@@ -62,17 +62,24 @@ extern "C" SEXP _shide_year_is_leap_cpp(SEXP x) {
   END_CPP11
 }
 // make.cpp
-cpp11::doubles jdate_make_cpp(cpp11::list_of<cpp11::integers> fields);
+doubles jdate_make_cpp(cpp11::list_of<cpp11::integers> fields);
 extern "C" SEXP _shide_jdate_make_cpp(SEXP fields) {
   BEGIN_CPP11
     return cpp11::as_sexp(jdate_make_cpp(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers>>>(fields)));
   END_CPP11
 }
 // make.cpp
-cpp11::doubles jdatetime_make_cpp(cpp11::list_of<cpp11::integers> fields, const cpp11::strings& tzone);
-extern "C" SEXP _shide_jdatetime_make_cpp(SEXP fields, SEXP tzone) {
+doubles jdatetime_make_cpp(cpp11::list_of<cpp11::integers> fields, const cpp11::strings& tzone, const std::string& ambiguous);
+extern "C" SEXP _shide_jdatetime_make_cpp(SEXP fields, SEXP tzone, SEXP ambiguous) {
   BEGIN_CPP11
-    return cpp11::as_sexp(jdatetime_make_cpp(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers>>>(fields), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone)));
+    return cpp11::as_sexp(jdatetime_make_cpp(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers>>>(fields), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(ambiguous)));
+  END_CPP11
+}
+// make.cpp
+doubles jdatetime_make_with_reference_cpp(cpp11::list_of<cpp11::integers> fields, const cpp11::strings& tzone, const cpp11::sexp x);
+extern "C" SEXP _shide_jdatetime_make_with_reference_cpp(SEXP fields, SEXP tzone, SEXP x) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(jdatetime_make_with_reference_cpp(cpp11::as_cpp<cpp11::decay_t<cpp11::list_of<cpp11::integers>>>(fields), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone), cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x)));
   END_CPP11
 }
 // parse.cpp
@@ -83,24 +90,31 @@ extern "C" SEXP _shide_jdate_parse_cpp(SEXP x, SEXP format) {
   END_CPP11
 }
 // parse.cpp
-cpp11::writable::doubles jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format, const cpp11::strings& tzone);
-extern "C" SEXP _shide_jdatetime_parse_cpp(SEXP x, SEXP format, SEXP tzone) {
+cpp11::writable::doubles jdatetime_parse_cpp(const cpp11::strings& x, const cpp11::strings& format, const cpp11::strings& tzone, const std::string& ambiguous);
+extern "C" SEXP _shide_jdatetime_parse_cpp(SEXP x, SEXP format, SEXP tzone, SEXP ambiguous) {
   BEGIN_CPP11
-    return cpp11::as_sexp(jdatetime_parse_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(x), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(format), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone)));
+    return cpp11::as_sexp(jdatetime_parse_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(x), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(format), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(ambiguous)));
   END_CPP11
 }
 // round.cpp
-cpp11::writable::doubles jdate_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name);
-extern "C" SEXP _shide_jdate_ceiling_cpp(SEXP x, SEXP unit_name) {
+cpp11::writable::doubles jdate_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name, const int n);
+extern "C" SEXP _shide_jdate_ceiling_cpp(SEXP x, SEXP unit_name, SEXP n) {
   BEGIN_CPP11
-    return cpp11::as_sexp(jdate_ceiling_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(unit_name)));
+    return cpp11::as_sexp(jdate_ceiling_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(unit_name), cpp11::as_cpp<cpp11::decay_t<const int>>(n)));
   END_CPP11
 }
 // round.cpp
-cpp11::writable::doubles jdate_floor_cpp(const cpp11::sexp x, const std::string& unit_name);
-extern "C" SEXP _shide_jdate_floor_cpp(SEXP x, SEXP unit_name) {
+cpp11::writable::doubles jdate_floor_cpp(const cpp11::sexp x, const std::string& unit_name, const int n);
+extern "C" SEXP _shide_jdate_floor_cpp(SEXP x, SEXP unit_name, SEXP n) {
   BEGIN_CPP11
-    return cpp11::as_sexp(jdate_floor_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(unit_name)));
+    return cpp11::as_sexp(jdate_floor_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x), cpp11::as_cpp<cpp11::decay_t<const std::string&>>(unit_name), cpp11::as_cpp<cpp11::decay_t<const int>>(n)));
+  END_CPP11
+}
+// round.cpp
+cpp11::writable::list parse_unit_cpp(const cpp11::strings& unit);
+extern "C" SEXP _shide_parse_unit_cpp(SEXP unit) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(parse_unit_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(unit)));
   END_CPP11
 }
 // seq.cpp
@@ -132,34 +146,44 @@ extern "C" SEXP _shide_local_days_from_sys_seconds_cpp(SEXP x, SEXP tzone) {
   END_CPP11
 }
 // zone.cpp
-cpp11::writable::strings get_zone_info(const cpp11::strings& x, const cpp11::strings& tzone);
-extern "C" SEXP _shide_get_zone_info(SEXP x, SEXP tzone) {
+cpp11::writable::list get_local_info_cpp(const cpp11::strings& x, const cpp11::strings& tzone);
+extern "C" SEXP _shide_get_local_info_cpp(SEXP x, SEXP tzone) {
   BEGIN_CPP11
-    return cpp11::as_sexp(get_zone_info(cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(x), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone)));
+    return cpp11::as_sexp(get_local_info_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(x), cpp11::as_cpp<cpp11::decay_t<const cpp11::strings&>>(tzone)));
+  END_CPP11
+}
+// zone.cpp
+cpp11::writable::list get_sys_info_cpp(const cpp11::sexp x);
+extern "C" SEXP _shide_get_sys_info_cpp(SEXP x) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(get_sys_info_cpp(cpp11::as_cpp<cpp11::decay_t<const cpp11::sexp>>(x)));
   END_CPP11
 }
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_shide_format_jdate_cpp",                (DL_FUNC) &_shide_format_jdate_cpp,                2},
-    {"_shide_format_jdatetime_cpp",            (DL_FUNC) &_shide_format_jdatetime_cpp,            2},
-    {"_shide_get_zone_info",                   (DL_FUNC) &_shide_get_zone_info,                   2},
-    {"_shide_jdate_ceiling_cpp",               (DL_FUNC) &_shide_jdate_ceiling_cpp,               2},
-    {"_shide_jdate_floor_cpp",                 (DL_FUNC) &_shide_jdate_floor_cpp,                 2},
-    {"_shide_jdate_get_fields_cpp",            (DL_FUNC) &_shide_jdate_get_fields_cpp,            1},
-    {"_shide_jdate_get_qday_cpp",              (DL_FUNC) &_shide_jdate_get_qday_cpp,              1},
-    {"_shide_jdate_get_wday_cpp",              (DL_FUNC) &_shide_jdate_get_wday_cpp,              1},
-    {"_shide_jdate_get_yday_cpp",              (DL_FUNC) &_shide_jdate_get_yday_cpp,              1},
-    {"_shide_jdate_make_cpp",                  (DL_FUNC) &_shide_jdate_make_cpp,                  1},
-    {"_shide_jdate_parse_cpp",                 (DL_FUNC) &_shide_jdate_parse_cpp,                 2},
-    {"_shide_jdate_seq_by_month_cpp",          (DL_FUNC) &_shide_jdate_seq_by_month_cpp,          2},
-    {"_shide_jdate_seq_by_year_cpp",           (DL_FUNC) &_shide_jdate_seq_by_year_cpp,           2},
-    {"_shide_jdatetime_get_fields_cpp",        (DL_FUNC) &_shide_jdatetime_get_fields_cpp,        1},
-    {"_shide_jdatetime_make_cpp",              (DL_FUNC) &_shide_jdatetime_make_cpp,              2},
-    {"_shide_jdatetime_parse_cpp",             (DL_FUNC) &_shide_jdatetime_parse_cpp,             3},
-    {"_shide_local_days_from_sys_seconds_cpp", (DL_FUNC) &_shide_local_days_from_sys_seconds_cpp, 2},
-    {"_shide_sys_seconds_from_local_days_cpp", (DL_FUNC) &_shide_sys_seconds_from_local_days_cpp, 2},
-    {"_shide_year_is_leap_cpp",                (DL_FUNC) &_shide_year_is_leap_cpp,                1},
+    {"_shide_format_jdate_cpp",                  (DL_FUNC) &_shide_format_jdate_cpp,                  2},
+    {"_shide_format_jdatetime_cpp",              (DL_FUNC) &_shide_format_jdatetime_cpp,              2},
+    {"_shide_get_local_info_cpp",                (DL_FUNC) &_shide_get_local_info_cpp,                2},
+    {"_shide_get_sys_info_cpp",                  (DL_FUNC) &_shide_get_sys_info_cpp,                  1},
+    {"_shide_jdate_ceiling_cpp",                 (DL_FUNC) &_shide_jdate_ceiling_cpp,                 3},
+    {"_shide_jdate_floor_cpp",                   (DL_FUNC) &_shide_jdate_floor_cpp,                   3},
+    {"_shide_jdate_get_fields_cpp",              (DL_FUNC) &_shide_jdate_get_fields_cpp,              1},
+    {"_shide_jdate_get_qday_cpp",                (DL_FUNC) &_shide_jdate_get_qday_cpp,                1},
+    {"_shide_jdate_get_wday_cpp",                (DL_FUNC) &_shide_jdate_get_wday_cpp,                1},
+    {"_shide_jdate_get_yday_cpp",                (DL_FUNC) &_shide_jdate_get_yday_cpp,                1},
+    {"_shide_jdate_make_cpp",                    (DL_FUNC) &_shide_jdate_make_cpp,                    1},
+    {"_shide_jdate_parse_cpp",                   (DL_FUNC) &_shide_jdate_parse_cpp,                   2},
+    {"_shide_jdate_seq_by_month_cpp",            (DL_FUNC) &_shide_jdate_seq_by_month_cpp,            2},
+    {"_shide_jdate_seq_by_year_cpp",             (DL_FUNC) &_shide_jdate_seq_by_year_cpp,             2},
+    {"_shide_jdatetime_get_fields_cpp",          (DL_FUNC) &_shide_jdatetime_get_fields_cpp,          1},
+    {"_shide_jdatetime_make_cpp",                (DL_FUNC) &_shide_jdatetime_make_cpp,                3},
+    {"_shide_jdatetime_make_with_reference_cpp", (DL_FUNC) &_shide_jdatetime_make_with_reference_cpp, 3},
+    {"_shide_jdatetime_parse_cpp",               (DL_FUNC) &_shide_jdatetime_parse_cpp,               4},
+    {"_shide_local_days_from_sys_seconds_cpp",   (DL_FUNC) &_shide_local_days_from_sys_seconds_cpp,   2},
+    {"_shide_parse_unit_cpp",                    (DL_FUNC) &_shide_parse_unit_cpp,                    1},
+    {"_shide_sys_seconds_from_local_days_cpp",   (DL_FUNC) &_shide_sys_seconds_from_local_days_cpp,   2},
+    {"_shide_year_is_leap_cpp",                  (DL_FUNC) &_shide_year_is_leap_cpp,                  1},
     {NULL, NULL, 0}
 };
 }
