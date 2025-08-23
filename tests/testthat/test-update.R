@@ -21,8 +21,8 @@ test_that("jdatetime_update works as expected", {
     )
 
     expect_identical(
-        jdatetime_update(dt1, list(hour = 23), ambiguous = "latest"),
-        jdatetime("1401-06-30 23:00:00", "Asia/Tehran", ambiguous = "latest")
+        jdatetime_update(dt1, list(hour = 23)),
+        jdatetime("1401-06-30 23:00:00", "Asia/Tehran", ambiguous = "earliest")
     )
 
     expect_identical(
@@ -31,4 +31,38 @@ test_that("jdatetime_update works as expected", {
     )
 
     expect_error(jdatetime_update(dt1, list(m = 1)))
+})
+
+test_that("jdatetime_update works as expected when input is consulted for resolving ambiguous time", {
+    tz = "Asia/Tehran"
+    dt1 <- jdatetime("1401-06-30 23:00:00", tz, ambiguous = "latest")
+    dt2 <- jdatetime("1401-06-30 23:00:00", tz, ambiguous = "earliest")
+
+    expect_identical(
+        jdatetime_update(dt1, list(second = 1)),
+        jdatetime("1401-06-30 23:00:01", tz, ambiguous = "latest")
+    )
+
+    expect_identical(
+        jdatetime_update(dt2, list(second = 1)),
+        jdatetime("1401-06-30 23:00:01", tz, ambiguous = "earliest")
+    )
+
+    expect_identical(
+        jdatetime_update(dt1, list(year = 1400)),
+        jdatetime("1400-06-30 23:00:00", tz, ambiguous = "latest")
+    )
+
+    #This should not happen in practice. I just want to document internal code behavior
+    fields <- list(year = 1400L, month = 6L, day = rep(30L, 3), hour = 23L, minute = 0L, second = 0L)
+    fields <- vec_recycle_common(!!!fields, .size = 3)
+    expect_identical(
+        jdatetime_make_with_reference_cpp(
+            fields, tz,
+            c(dt1, dt2, jdatetime(NA_real_, tzone = tz))
+        ) |> jdatetime(tz),
+        c(jdatetime("1400-06-30 23:00:00", tz, ambiguous = "latest"),
+          jdatetime("1400-06-30 23:00:00", tz, ambiguous = "earliest"),
+          jdatetime(NA_real_, tz))
+    )
 })

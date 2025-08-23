@@ -1,5 +1,4 @@
 #include "shide.h"
-#include "jalali.h"
 
 std::string get_current_tzone_cpp();
 
@@ -51,8 +50,7 @@ get_local_info_cpp(const cpp11::strings& x, const cpp11::strings& tzone)
         date::from_stream(is, fmt, fds, tz_name_, &offset);
 
         auto ymd = sh_year_month_day{ fds.ymd };
-        auto ld = date::local_days{ ymd };
-        auto ls = ld + fds.tod.to_duration();
+        auto ls = date::local_days{ ymd } + fds.tod.to_duration();
         tzdb::get_local_info(ls, tz, info);
 
         switch (info.result)
@@ -124,7 +122,6 @@ get_sys_info_cpp(const cpp11::sexp x)
     cpp11::writable::doubles dst(size);
     cpp11::writable::doubles offset(size);
     cpp11::writable::strings abbreviation(size);
-    date::sys_seconds ss;
     date::sys_info info;
 
     for (R_xlen_t i = 0; i < size; ++i)
@@ -137,8 +134,7 @@ get_sys_info_cpp(const cpp11::sexp x)
             continue;
         }
 
-        ss = date::sys_seconds{ std::chrono::seconds{ static_cast<int>(xx[0]) } };
-        tzdb::get_sys_info(ss, tz, info);
+        tzdb::get_sys_info(sys_seconds_from_double(xx[0]), tz, info);
         dst[i] = static_cast<double>(info.save.count());
         offset[i] = static_cast<double>(info.offset.count());
         SET_STRING_ELT(abbreviation, i, Rf_mkCharLenCE(info.abbrev.c_str(), info.abbrev.size(), CE_UTF8));

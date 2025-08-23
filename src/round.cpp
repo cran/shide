@@ -1,132 +1,26 @@
 #include "shide.h"
-#include <map>
+#include <shide/round.h>
+#include <shide/make.h>
 #include <stdlib.h>
 
-int sh_qday(const sh_year_month_day& ymd);
-int sh_yday(const sh_year_month_day& ymd);
-int sh_wday(const date::local_days& ld);
-sh_year_month_day first_day_next_month(const sh_year_month_day& ymd);
+std::string get_current_tzone_cpp();
 
-constexpr int floor_component1(const int x, const int n)
-{
-    return (x / n) * n;
-}
-constexpr int floor_component2(const int x, const int n)
-{
-    return ((x - 1) / n) * n + 1;
-}
-
-constexpr int ceiling_component1(const int x, const int n)
-{
-    return ((x / n) + 1) * n;
-}
-constexpr int ceiling_component2(const int x, const int n)
-{
-    return ((x - 1) / n + 1) * n + 1;
-}
-
-enum class Unit {year, quarter, month, week, day};
-
-Unit string_to_unit(const std::string& unit_name) {
-    static const std::map<std::string, Unit> unit_map{
-        {"year", Unit::year},
-        {"quarter", Unit::quarter},
-        {"month", Unit::month},
-        {"week", Unit::week},
-        {"day", Unit::day},
-    };
-
-    auto it = unit_map.find(unit_name);
-    if (it != unit_map.end()) {
-        return it->second;
-    }
-    else {
-        Rf_error("Invalid unit: (%s)", unit_name.c_str());
-    }
-}
-
-date::local_days
-jdate_ceiling(const date::local_days& ld, const Unit& unit, const int n)
-{
-    sh_year_month_day ymd{ld};
-    sh_year_month_day ymd2{};
-    date::local_days ld_out{ld};
-    int y, m, d;
-
-    switch (unit)
-    {
-    case Unit::year:
-        y = ceiling_component1(static_cast<int>(ymd.year()), n);
-        ymd2 = sh_year_month_day{ date::year(y), date::month(1), date::day(1) };
-        break;
-    case Unit::quarter:
-        m = ceiling_component2(static_cast<unsigned>(ymd.month()), n * 3);
-        ymd2 = sh_year_month_day{ ymd.year(), date::month(m), date::day(1) };
-        break;
-    case Unit::month:
-        m = ceiling_component2(static_cast<unsigned>(ymd.month()), n);
-        ymd2 = sh_year_month_day{ ymd.year(), date::month(m), date::day(1) };
-        break;
-    case Unit::week:
-        ld_out = ld + date::days{7 - sh_wday(ld)} + date::days{ 1 };
-        return ld_out;
-    case Unit::day:
-        d = ceiling_component2(static_cast<unsigned>(ymd.day()), n);
-        ymd2 = sh_year_month_day{ ymd.year(), ymd.month(), date::day(d)};
-        if (!ymd2.ok())
-            ymd2 = first_day_next_month(ymd2);
-        break;
-    }
-
-    ld_out = date::local_days{ ymd2 };
-    return ld_out;
-}
-
-date::local_days
-jdate_floor(const date::local_days& ld, const Unit& unit, const int n)
-{
-    sh_year_month_day ymd{ ld };
-    sh_year_month_day ymd2{};
-    date::local_days ld_out{};
-    int y, m, d;
-
-    switch (unit)
-    {
-    case Unit::year:
-        y = floor_component1(static_cast<int>(ymd.year()), n);
-        ymd2 = sh_year_month_day{ date::year(y), date::month(1), date::day(1) };
-        break;
-    case Unit::quarter:
-        m = floor_component2(static_cast<unsigned>(ymd.month()), n * 3);
-        ymd2 = sh_year_month_day{ ymd.year(), date::month(m), date::day(1) };
-        break;
-    case Unit::month:
-        m = floor_component2(static_cast<unsigned>(ymd.month()), n);
-        ymd2 = sh_year_month_day{ ymd.year(), date::month(m), date::day(1) };
-        break;
-    case Unit::week:
-        ld_out = ld - date::days(sh_wday(ld) - 1);
-        return ld_out;
-    case Unit::day:
-        d = floor_component2(static_cast<unsigned>(ymd.day()), n);
-        ymd2 = sh_year_month_day{ ymd.year(), ymd.month(), date::day(d)};
-        break;
-    }
-
-    ld_out = date::local_days{ ymd2 };
-    return ld_out;
-}
 [[cpp11::register]]
 cpp11::writable::doubles
 jdate_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name, const int n)
 {
-    const auto unit{ string_to_unit(unit_name) };
+    const auto opt{ string_to_unit(unit_name) };
+    if (!opt)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
+    const auto unit{*opt};
+    if (unit < Unit::day)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
     const cpp11::doubles xx = cpp11::as_cpp<cpp11::doubles>(x);
     const R_xlen_t size = xx.size();
     cpp11::writable::doubles out(size);
-    date::days days_since_epoch;
     date::local_days ld;
-    date::local_days ld_out;
 
     for (R_xlen_t i = 0; i < size; ++i)
     {
@@ -137,9 +31,7 @@ jdate_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name, const int n
         }
 
         ld = date::local_days{ date::days(static_cast<int>(xx[i])) };
-        ld_out = jdate_ceiling(ld, unit, n);
-        days_since_epoch = ld_out.time_since_epoch();
-        out[i] = static_cast<double>(days_since_epoch.count());
+        out[i] = make_jdate(ceiling_jdate(ld, unit, n));
     }
 
     return out;
@@ -149,13 +41,18 @@ jdate_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name, const int n
 cpp11::writable::doubles
 jdate_floor_cpp(const cpp11::sexp x, const std::string& unit_name, const int n)
 {
-    const auto unit{ string_to_unit(unit_name) };
+    const auto opt{ string_to_unit(unit_name) };
+    if (!opt)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
+    const auto unit{*opt};
+    if (unit < Unit::day)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
     const cpp11::doubles xx = cpp11::as_cpp<cpp11::doubles>(x);
     const R_xlen_t size = xx.size();
     cpp11::writable::doubles out(size);
-    date::days days_since_epoch;
     date::local_days ld;
-    date::local_days ld_out;
 
     for (R_xlen_t i = 0; i < size; ++i)
     {
@@ -166,9 +63,85 @@ jdate_floor_cpp(const cpp11::sexp x, const std::string& unit_name, const int n)
         }
 
         ld = date::local_days{ date::days(static_cast<int>(xx[i])) };
-        ld_out = jdate_floor(ld, unit, n);
-        days_since_epoch = ld_out.time_since_epoch();
-        out[i] = static_cast<double>(days_since_epoch.count());
+        out[i] = make_jdate(floor_jdate(ld, unit, n));
+    }
+
+    return out;
+}
+
+[[cpp11::register]]
+cpp11::writable::doubles
+jdatetime_floor_cpp(const cpp11::sexp x, const std::string& unit_name, const int n)
+{
+    const cpp11::strings tz_name_ =  cpp11::as_cpp<cpp11::strings>(x.attr("tzone"));
+    std::string tz_name(tz_name_[0]);
+    const date::time_zone* tz{};
+
+    if (!tz_name.size())
+        tz_name = get_current_tzone_cpp();
+
+    if (!tzdb::locate_zone(tz_name, tz))
+        cpp11::stop(std::string(tz_name + " not found in timezone database").c_str());
+
+    const auto opt{ string_to_unit(unit_name) };
+    if (!opt)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
+    const auto unit{*opt};
+    const cpp11::doubles xx = cpp11::as_cpp<cpp11::doubles>(x);
+    const R_xlen_t size = xx.size();
+    cpp11::writable::doubles out(size);
+    date::sys_seconds ss;
+
+    for (R_xlen_t i = 0; i < size; ++i)
+    {
+        if (std::isnan(xx[i]))
+        {
+            out[i] = NA_REAL;
+            continue;
+        }
+
+        ss = floor_jdatetime(sys_seconds_from_double(xx[i]), tz, unit, n);
+        out[i] = static_cast<double>(ss.time_since_epoch().count());
+    }
+
+    return out;
+}
+
+[[cpp11::register]]
+cpp11::writable::doubles
+jdatetime_ceiling_cpp(const cpp11::sexp x, const std::string& unit_name, const int n)
+{
+    const cpp11::strings tz_name_ =  cpp11::as_cpp<cpp11::strings>(x.attr("tzone"));
+    std::string tz_name(tz_name_[0]);
+    const date::time_zone* tz{};
+
+    if (!tz_name.size())
+        tz_name = get_current_tzone_cpp();
+
+    if (!tzdb::locate_zone(tz_name, tz))
+        cpp11::stop(std::string(tz_name + " not found in timezone database").c_str());
+
+    const auto opt{ string_to_unit(unit_name) };
+    if (!opt)
+        cpp11::stop("Invalid unit: (%s)", unit_name.c_str());
+
+    const auto unit{*opt};
+    const cpp11::doubles xx = cpp11::as_cpp<cpp11::doubles>(x);
+    const R_xlen_t size = xx.size();
+    cpp11::writable::doubles out(size);
+    date::sys_seconds ss;
+
+    for (R_xlen_t i = 0; i < size; ++i)
+    {
+        if (std::isnan(xx[i]))
+        {
+            out[i] = NA_REAL;
+            continue;
+        }
+
+        ss = ceiling_jdatetime(sys_seconds_from_double(xx[i]), tz, unit, n);
+        out[i] = static_cast<double>(ss.time_since_epoch().count());
     }
 
     return out;
